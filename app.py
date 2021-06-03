@@ -33,30 +33,33 @@ def update_home_tab(client, event, logger):
                     {
                         "type": "header",
                         "text": {
-                            "type": "plain_text",
-                            "text": "*Welcome to Movie Info!:tada:*",
-                            "emoji": True
+                                "type": "plain_text",
+                                "text": "*Welcome to Movie Info!:tada:*",
+                                "emoji": True
                         }
-                    },
-                    {
-                        "type": "divider"
                     },
                     {
                         "type": "section",
-                        "block_id": "multi-selection-block",
                         "text": {
-                            "type": "mrkdwn",
-                            "text": "Select a movie:"
-                        },
-                        "accessory": {
-                            "type": "external_select",
-                            "action_id": "movie-selection-action",
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "Select an item",
+                            "type": "plain_text",
+                            "text": "Click the button below to pick a movie!",
                                 "emoji": True
-                            }
                         }
+                    },
+                    {
+                        "type": "actions",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "text": {
+                                        "type": "plain_text",
+                                        "text": "Select a Movie!",
+                                                "emoji": True
+                                },
+                                "value": "click_me_123",
+                                "action_id": "actionId-0"
+                            }
+                        ]
                     }
                 ]
             }
@@ -64,6 +67,98 @@ def update_home_tab(client, event, logger):
 
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
+
+
+@app.action("actionId-0")
+def open_modal(ack, body, client):
+    # Acknowledge the command request
+    ack()
+    # Call views_open with the built-in client
+    client.views_open(
+        # Pass a valid trigger_id within 3 seconds of receiving it
+        trigger_id=body["trigger_id"],
+        # View payload
+        view={
+            "type": "modal",
+            # View identifier
+            "callback_id": "movie-modal-view",
+            "title": {"type": "plain_text", "text": "Movie Info"},
+            "submit": {"type": "plain_text", "text": "Submit"},
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "movie-selection-block",
+                    "element": {
+                        "type": "external_select",
+                        "placeholder": {
+                            "type": "plain_text",
+                            "text": "Select an item",
+                            "emoji": True
+                        },
+                        "action_id": "movie-selection-action"
+                    },
+                    "label": {
+                        "type": "plain_text",
+                        "text": "Select a Movie:",
+                        "emoji": True
+                    }
+                }
+            ]
+        }
+    )
+
+
+@app.view("movie-modal-view")
+def handle_view_events(ack, body, logger, client):
+    ack()
+    logger.info(body)
+
+    user_id = body["user"]["id"]
+    # ID of the channel you want to send the message to
+    movie_id = body["view"]["state"]["values"]["movie-selection-block"]["movie-selection-action"]["selected_option"]["value"]
+    try:
+        movie_detail = movie_service.get_movie_detail(movie_id)
+        # Call the chat.postMessage method using the WebClient
+        result = client.chat_postMessage(
+            channel=user_id,
+            blocks=[
+                {
+                    "type": "divider"
+                },                
+                {
+                    "type": "section",
+                    "text": {
+                            "type": "plain_text",
+                        "text": "Here's the movie info you requested!",
+                                "emoji": True
+                    }
+                },
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": movie_detail.get("title"),
+                                "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Release date:* {movie_detail.get('release_date')} \n{movie_detail.get('overview')}"
+                    },
+                    "accessory": {
+                        "type": "image",
+                        "image_url": movie_detail.get("poster_path"),
+                        "alt_text": movie_detail.get("title")
+                    }
+                }
+            ]
+        )
+        logger.info(result)
+
+    except Exception as e:
+        logger.error(f"Error posting message: {e}")
 
 
 @app.options("movie-selection-action")
