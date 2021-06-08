@@ -2,7 +2,7 @@ import os
 import requests
 from conf import IMG_BASE_URL, MOVIE_SERVICE_BASE_URL
 from util import convert_date
-
+import logging
 
 class MovieService:
 
@@ -35,7 +35,7 @@ class MovieService:
                 data = response.json().get("results")
                 return self._create_movie_options(data)
         except Exception as e:
-            print(f"Error publishing home tab: {e}")
+            logging.error(f"Error searching movie - {search}: {e}")
 
     def get_movie_detail(self, movie_id: str) -> dict:
         """This function retrieves movie detail for movie id passed in as parameter
@@ -52,8 +52,10 @@ class MovieService:
             if response.status_code == 200:
                 data = response.json()
                 return self._extract_movie_detail(data, ["title", "poster_path", "release_date", "overview"])
+            else:
+                logging.error(f"Movie detail request for movie id: {movie_id} was not successful. Status Code: {response.status_code}")
         except Exception as e:
-            print(f"Error publishing home tab: {e}")
+            logging.error(f"Error getting movie detail for movie id - {movie_id}: {e}")
 
     def _create_movie_options(self, data: list) -> list:
         """This function takes raw data returned from service and transforms it to format needed for select menu
